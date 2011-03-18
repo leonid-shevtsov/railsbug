@@ -24,8 +24,16 @@ FBL.ns(function() { with (FBL) {
         var httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
         httpChannel.setRequestHeader('X-RailsBug-Enabled', 'true', false);
       } else if (topic == 'http-on-examine-response') {
-        FBTrace.sysout('data ex', subject.getResponseHeader('X-RailsBug'));
+        try { 
+          var data = JSON.parse(subject.getResponseHeader('X-RailsBug'));
+          this.handleRailsBug(data);
+        } catch(NS_ERROR_NOT_AVAILABLE) {
+          // no RailsBug header present
+        }
       }
+    },
+
+    handleRailsBug: function(data) {
     }
   });
 
