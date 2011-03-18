@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+
+<overlay xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul">
+  <script src="chrome://rails_bug/content/rails_bug.js" type="application/x-javascript"/>
+
+    <commandset id="mainCommandSet">
+        <command id="cmd_hwMyButton" oncommand="Firebug.RailsBug.onMyButton(FirebugContext)"/>
+    </commandset>
+
+    <toolbar id="fbToolbar" align="center">
+        <hbox id="fbToolbarInner" insertbefore="fbDetachButton" flex="1" align="center">
+            <hbox id="fbRailsBugButtons" insertafter="fbNetButtons">
+                <toolbarbutton id="hwMyButton"
+                    label="Say Hello" class="toolbar-text-button"
+                    tooltiptext="Push to say hello" command="cmd_hwMyButton"/>
+           </hbox>
+       </hbox>
+    </toolbar>
+
+</overlay>
