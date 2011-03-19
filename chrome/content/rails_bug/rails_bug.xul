@@ -4,7 +4,7 @@
   <script src="chrome://rails_bug/content/rails_bug.js" type="application/x-javascript"/>
 
     <commandset id="mainCommandSet">
-        <command id="cmd_hwMyButton" oncommand="Firebug.RailsBug.onMyButton(FirebugContext)"/>
+        <command id="cmd_hwMyButton" oncommand="Firebug.RailsBugModule.onMyButton(FirebugContext)"/>
     </commandset>
 
     <toolbar id="fbToolbar" align="center">
