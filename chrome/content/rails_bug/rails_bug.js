@@ -51,7 +51,8 @@ FBL.ns(function() { with (FBL) {
     }
   };
 
-  Firebug.RailsSqlTab = extend(Firebug.Module, {
+  Firebug.RailsNetTabs = extend(Firebug.Module, {
+    // Add listeners
     initialize: function() {
       Firebug.Module.initialize.apply(this, arguments);
 
@@ -59,6 +60,7 @@ FBL.ns(function() { with (FBL) {
       Firebug.NetMonitor.addListener(this);
     },
 
+    // Remove listeners
     shutdown: function() {
       Firebug.Module.shutdown.apply(this, arguments);
 
@@ -66,30 +68,15 @@ FBL.ns(function() { with (FBL) {
       Firebug.NetMonitor.removeListener(this);
     },
     
+    // Get headers and extract RailsBug data from them
     onExamineResponse: function(context, request) {
-      var i = -1;
-      for(i in context.netProgress.requests) {
-        if (request === context.netProgress.requests[i]) {
-          break;
-        }
-      }
-      if (i != -1) {
-        if (context.railsBugData === undefined)
-          context.railsBugData = [];
-        if (context.railsBugData[i] === undefined)
-          context.railsBugData[i] = this._parseData(this._extractHeaders(request));
-      }
+      this._setDataForRequest(context, request, this._parseData(this._extractHeaders(request)));
     },
 
+    // Create tabs according to what's been given in the RailsBug data
     initTabBody: function(infoBox, file) {
-      var i = -1;
-      for (i in FirebugContext.netProgress.requests) {
-        if (file.request === FirebugContext.netProgress.requests[i]) {
-          break;
-        }
-      }
+      infoBox.railsBugData = this._getDataForRequest(FirebugContext, file.request);
 
-      infoBox.railsBugData = FirebugContext.railsBugData[i];
       if (infoBox.railsBugData) {
         for (var tab in infoBox.railsBugData) {
           Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+tab, 'Rails '+tab);
@@ -97,11 +84,8 @@ FBL.ns(function() { with (FBL) {
       }
     },
 
-    destroyTabBody: function(infoBox, file) {
-    },
-
+    // Populate a selected tab
     updateTabBody: function(infoBox, file, context) {
-      // Get currently selected tab.
       var tab = infoBox.selectedTab;
       
       if (tab.dataPresented || infoBox.railsBugData===null) return;
@@ -121,7 +105,7 @@ FBL.ns(function() { with (FBL) {
       }
     },
 
-    // Extract RailsBug data from headers
+    // Extract RailsBug data from headers, clearing them so they won't pollute the Headers tab
     _extractHeaders: function(subject) {
       var rails_bug_data = '';
       var i = 1;
@@ -143,6 +127,33 @@ FBL.ns(function() { with (FBL) {
     // TODO error handling
     _parseData: function(data) {
       return data==='' ? null : JSON.parse(data);
+    },
+
+    // Find the request index in the given context's array of requests
+    _getRequestIndex: function(context, request) {
+      var i = -1;
+      for (i in context.netProgress.requests) {
+        if (request === context.netProgress.requests[i]) {
+          break;
+        }
+      }
+      return i;
+    },
+
+    // Get RailsBug data for given request
+    _getDataForRequest: function(context, request) {
+      return context.railsBugData ? context.railsBugData[this._getRequestIndex(context, request)] : null;
+    },
+    
+    // Set RailsBug data for given request
+    _setDataForRequest: function(context, request, data) {
+      var index = this._getRequestIndex(context, request);
+      if (!context.railsBugData) {
+        context.railsBugData = [];
+      }
+      if (!context.railsBugData[index]) {
+        context.railsBugData[index] = data;
+      }
     }
   });
 
@@ -205,6 +216,6 @@ FBL.ns(function() { with (FBL) {
   });
 
   Firebug.registerActivableModule(Firebug.RailsBugModule);
-  Firebug.registerActivableModule(Firebug.RailsSqlTab);
+  Firebug.registerActivableModule(Firebug.RailsNetTabs);
   Firebug.registerPanel(RailsBugPanel); 
 }});
