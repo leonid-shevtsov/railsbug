@@ -6,21 +6,22 @@ FBL.ns(function() { with (FBL) {
     FBTrace.sysout(">>> RailsBug >> " + string, object);
   }
 
-  // Observer object to handle HTTP requests
-  function RailsBugObserver() {}
+  function HeaderInjectingObserver() {}
 
-  RailsBugObserver.prototype = {
+  HeaderInjectingObserver.prototype = {
     //// PUBLIC
 
     // HTTP event handler method
     observe: function(subject, topic, data) {
-        debug('observer');
       if (topic == 'http-on-modify-request') {
         this._injectHeaders(subject);
+      }
+/*
       } else if (topic == 'http-on-examine-response') {
         debug('handling response');
         this._handleResponse(subject);
       }
+*/
     },
 
     // Set observer to process HTTP events
@@ -47,14 +48,76 @@ FBL.ns(function() { with (FBL) {
     _injectHeaders: function(subject) {
       var httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
       httpChannel.setRequestHeader('X-RailsBug-Enabled', 'true', false);
+    }
+  };
+
+  Firebug.RailsSqlTab = extend(Firebug.Module, {
+    initialize: function() {
+      Firebug.Module.initialize.apply(this, arguments);
+
+      Firebug.NetMonitor.NetInfoBody.addListener(this);
+      Firebug.NetMonitor.addListener(this);
+    },
+
+    shutdown: function() {
+      Firebug.Module.shutdown.apply(this, arguments);
+
+      Firebug.NetMonitor.NetInfoBody.removeListener(this);
+      Firebug.NetMonitor.removeListener(this);
     },
     
-    // Handle RailsBug data from the response
-    _handleResponse: function(subject) {
-      debug('handleResponse');
-      var rails_bug_data = this._parseData(this._extractHeaders(subject));
-      if (rails_bug_data !== null) {
-        Firebug.RailsBugModule.handle(rails_bug_data);
+    onExamineResponse: function(context, request) {
+      var i = -1;
+      for(i in context.netProgress.requests) {
+        if (request === context.netProgress.requests[i]) {
+          break;
+        }
+      }
+      if (i != -1) {
+        if (context.railsBugData === undefined)
+          context.railsBugData = [];
+        if (context.railsBugData[i] === undefined)
+          context.railsBugData[i] = this._parseData(this._extractHeaders(request));
+      }
+    },
+
+    initTabBody: function(infoBox, file) {
+      var i = -1;
+      for (i in FirebugContext.netProgress.requests) {
+        if (file.request === FirebugContext.netProgress.requests[i]) {
+          break;
+        }
+      }
+
+      infoBox.railsBugData = FirebugContext.railsBugData[i];
+      if (infoBox.railsBugData) {
+        for (var tab in infoBox.railsBugData) {
+          Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+tab, 'Rails '+tab);
+        }
+      }
+    },
+
+    destroyTabBody: function(infoBox, file) {
+    },
+
+    updateTabBody: function(infoBox, file, context) {
+      // Get currently selected tab.
+      var tab = infoBox.selectedTab;
+      
+      if (tab.dataPresented || infoBox.railsBugData===null) return;
+      
+      // Detect if it's our tab
+      for (var tab_title in infoBox.railsBugData) {
+        if (hasClass(tab, 'netInfoRailsbug_'+tab_title+'Tab')) {
+          // Make sure the content is generated just once.
+          tab.dataPresented = true;
+
+          // Get body element associated with the tab.
+          var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tab_title+'Text');
+
+          tabBody.innerHTML = infoBox.railsBugData[tab_title];
+          return;
+        }
       }
     },
 
@@ -66,6 +129,7 @@ FBL.ns(function() { with (FBL) {
       try {
         while(true) {
           rails_bug_data += subject.getResponseHeader('X-RailsBug-'+i);
+          subject.setResponseHeader('X-RailsBug-'+i, '', false);
           i++;
         }
       } catch(NS_ERROR_NOT_AVAILABLE) {
@@ -80,7 +144,7 @@ FBL.ns(function() { with (FBL) {
     _parseData: function(data) {
       return data==='' ? null : JSON.parse(data);
     }
-  };
+  });
 
   // Main module
   Firebug.RailsBugModule = extend(Firebug.ActivableModule, {
@@ -89,7 +153,7 @@ FBL.ns(function() { with (FBL) {
     initialize: function() {
       Firebug.ActivableModule.initialize.apply(this, arguments);
 
-      this.requestObserver = new RailsBugObserver();
+      this.requestObserver = new HeaderInjectingObserver();
     },
 
     shutdown: function() {
@@ -109,12 +173,6 @@ FBL.ns(function() { with (FBL) {
 
     onMyButton: function(context) {
       alert('!');
-    },
-
-    handle: function(context, data) {
-      FBTrace.sysout('in handler');
-      var panel = FirebugContext.getPanel(panelName);
-      panel.panelNode.innerHTML = panel.panelNode.innerHTML + 'FFFFUUUU';
     }
   });
 
@@ -147,6 +205,6 @@ FBL.ns(function() { with (FBL) {
   });
 
   Firebug.registerActivableModule(Firebug.RailsBugModule);
+  Firebug.registerActivableModule(Firebug.RailsSqlTab);
   Firebug.registerPanel(RailsBugPanel); 
-
 }});
