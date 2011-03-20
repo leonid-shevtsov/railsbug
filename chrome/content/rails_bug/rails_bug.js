@@ -128,7 +128,9 @@ FBL.ns(function() { with (FBL) {
           // Get body element associated with the tab.
           var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tab_title+'Text');
           
-          if (this['_template_'+tab_title]) {
+          if (this['_render_'+tab_title]) {
+            this['_render_'+tab_title](tabBody, infoBox.railsBugData[tab_title], context);
+          } else if (this['_template_'+tab_title]) {
             tabBody.innerHTML = tmpl(this['_template_'+tab_title],infoBox.railsBugData[tab_title]);
           } else {
             Firebug.JSONViewerModel.Preview.render(tabBody, {jsonObject: infoBox.railsBugData[tab_title]}, context);
@@ -168,6 +170,31 @@ FBL.ns(function() { with (FBL) {
       <% } %> \
       </table> \
     ',
+
+    _template_request_variables: ' \
+      <% for (var i in sections) { %> \
+        <h2><%= i %></h2> \
+        <table class="railsBug-requestVariables-table"> \
+          <% for (var entry in sections[i]) { %> \
+            <tr> \
+              <td class="railsBug-requestVariables-table-name"> \
+                <%= entry %> \
+              </td> \
+              <td class="railsBug-requestVariables-table-value"> \
+                <%= typeof(sections[i][entry])=="String" ? sections[i][entry] : JSON.stringify(sections[i][entry]) %> \
+              </td> \
+            </tr> \
+          <% } %> \
+        </table> \
+      <% } %> \
+    ',
+
+//    _render_request_variables: function(tabBody, data, context) {
+//      tabBody.innerHTML = tmpl(this._template_request_variables, data);
+//      for (var i in data.sections) {
+//        Firebug.JSONViewerModel.Preview.render(tabBody.ownerDocument.getElementById("request_variables_"+i.replace(' ','')+"_container"), {jsonObject: data.sections[i]}, context);
+//      }
+//    },
 
     // Extract RailsBug data from headers, clearing them so they won't pollute the Headers tab
     _extractHeaders: function(subject) {
