@@ -17,6 +17,7 @@
     <em:name>RailsBug</em:name>
     <em:description>Firebug Extension for Ruby on Rails</em:description>
     <em:creator>Leonid Shevtsov</em:creator>
-    <em:homepageURL>http://leonid.shevtsov.me</em:homepageURL>
+    <em:homepageURL>https://github.com/leonid-shevtsov/railsbug</em:homepageURL>
+    <em:iconURL>chrome://railsbug/skin/icon.png</em:iconURL>
   </Description>
 </RDF>

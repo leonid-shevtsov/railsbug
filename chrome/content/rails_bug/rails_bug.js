@@ -35,6 +35,7 @@ FBL.ns(function() { with (FBL) {
     FBTrace.sysout(">>> RailsBug >> " + string, object);
   }
 
+
   function HeaderInjectingObserver() {}
 
   HeaderInjectingObserver.prototype = {
@@ -107,8 +108,8 @@ FBL.ns(function() { with (FBL) {
       infoBox.railsBugData = this._getDataForRequest(FirebugContext, file.request);
 
       if (infoBox.railsBugData) {
-        for (var tab in infoBox.railsBugData) {
-          Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+tab, infoBox.railsBugData[tab].title);
+        for (var i in infoBox.railsBugData) {
+          Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+infoBox.railsBugData[i][0], infoBox.railsBugData[i][1].title);
         }
       }
     },
@@ -120,7 +121,10 @@ FBL.ns(function() { with (FBL) {
       if (tab.dataPresented || infoBox.railsBugData===null) return;
       
       // Detect if it's our tab
-      for (var tab_title in infoBox.railsBugData) {
+      for (var i in infoBox.railsBugData) {
+        var tab_title = infoBox.railsBugData[i][0];
+        var tab_data = infoBox.railsBugData[i][1];
+
         if (hasClass(tab, 'netInfoRailsbug_'+tab_title+'Tab')) {
           // Make sure the content is generated just once.
           tab.dataPresented = true;
@@ -129,17 +133,22 @@ FBL.ns(function() { with (FBL) {
           var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tab_title+'Text');
           
           if (this['_render_'+tab_title]) {
-            this['_render_'+tab_title](tabBody, infoBox.railsBugData[tab_title], context);
+            this['_render_'+tab_title](tabBody, tab_data, context);
           } else if (this['_template_'+tab_title]) {
-            tabBody.innerHTML = tmpl(this['_template_'+tab_title],infoBox.railsBugData[tab_title]);
+            tabBody.innerHTML = tmpl(this['_template_'+tab_title], tab_data);
           } else {
-            Firebug.JSONViewerModel.Preview.render(tabBody, {jsonObject: infoBox.railsBugData[tab_title]}, context);
+            Firebug.JSONViewerModel.Preview.render(tabBody, {jsonObject: tab_data}, context);
           }
 
           return;
         }
       }
     },
+  
+    formatMs: function(ms) {
+      return ''+ms.toFixed(1)+'ms';
+    },
+
 
     _template_log: ' \
       <% for(var i in entries) { %> \
@@ -160,11 +169,11 @@ FBL.ns(function() { with (FBL) {
             <%=queries[i].sql %> \
           </td> \
           <td class="sql-actions"> \
-            <a href="#copy">c</a> \
-            <a href="#backtrace">b</a> \
-            <a href="#examine">e</a> \
-            <a href="#run">r</a> \
-            <a href="#profile">p</a> \
+            <a href="#copy" title="Copy"><img src="chrome://railsbug/skin/sql-copy.png"></a> \
+            <a href="#backtrace" title="Toggle backtrace"><img src="chrome://railsbug/skin/sql-backtrace.png"></a> \
+            <a href="#run" title="Execute"><img src="chrome://railsbug/skin/sql-run.png"></a> \
+            <a href="#explain" title="EXPLAIN"><img src="chrome://railsbug/skin/sql-explain.png"></a> \
+            <a href="#profile" title="Profile"><img src="chrome://railsbug/skin/sql-profile.png"></a> \
           </td> \
         </tr> \
       <% } %> \
@@ -175,19 +184,52 @@ FBL.ns(function() { with (FBL) {
       <% for (var i in sections) { %> \
         <h2><%= i %></h2> \
         <table class="railsBug-requestVariables-table"> \
-          <% for (var entry in sections[i]) { %> \
+          <% for (var j in sections[i]) { %> \
             <tr> \
               <td class="railsBug-requestVariables-table-name"> \
-                <%= entry %> \
+                <%= sections[i][j][0] %> \
               </td> \
               <td class="railsBug-requestVariables-table-value"> \
-                <%= typeof(sections[i][entry])=="String" ? sections[i][entry] : JSON.stringify(sections[i][entry]) %> \
+                <%= JSON.stringify(sections[i][j][1]) %> \
               </td> \
             </tr> \
           <% } %> \
         </table> \
       <% } %> \
     ',
+
+    _template_templates: ' \
+      <ul class="railsBug-templates"> \
+        <% for (var i in templates) { %> \
+          <li> \
+            <h3><%=Firebug.RailsNetTabs.formatMs(templates[i].time)%> / <%=Firebug.RailsNetTabs.formatMs(templates[i].exclusive_time)%> ex / <%=templates[i].totalShare%> t / <%=templates[i].parentShare%> p: <%=templates[i].name%></h3> \
+            <%=templates[i].children ? tmpl(Firebug.RailsNetTabs._template_templates, {templates: templates[i].children}) : ""%> \
+          </li> \
+        <% } %> \
+      </ul> \
+    ',
+
+    _calculateTemplateShares: function(templates, totalTime, parentTime) {
+      for (var i in templates) {
+        templates[i].totalShare = ''+(templates[i].time*100/totalTime).toFixed(1)+'%';
+        templates[i].parentShare = ''+(templates[i].time*100/parentTime).toFixed(1)+'%';
+        if (templates[i].children) {
+          this._calculateTemplateShares(templates[i].children, totalTime, templates[i].time);
+        }
+      }
+    },
+
+    _render_templates: function(tabBody, data, context) {
+      var total_time = 0;
+
+      for (var i in data.templates) {
+        total_time += data.templates[i].time;
+      }
+
+      this._calculateTemplateShares(data.templates, total_time, total_time);
+      
+      tabBody.innerHTML = tmpl(this._template_templates, data);
+    },
 
 //    _render_request_variables: function(tabBody, data, context) {
 //      tabBody.innerHTML = tmpl(this._template_request_variables, data);

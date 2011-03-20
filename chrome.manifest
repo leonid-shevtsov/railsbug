@@ -1,3 +1,5 @@
 content rails_bug chrome/content/rails_bug/
 
 overlay chrome://firebug/content/firebugOverlay.xul chrome://rails_bug/content/rails_bug.xul
+
+skin railsbug classic/1.0 skin/classic/
