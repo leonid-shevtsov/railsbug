@@ -1,5 +1,34 @@
 FBL.ns(function() { with (FBL) {
 
+  // Simple JavaScript Templating
+  // John Resig - http://ejohn.org/ - MIT Licensed
+  (function(){
+    var cache = {};
+  
+    this.tmpl = function tmpl(str, data){
+      // Figure out if we're getting a template, or if we need to
+      // load the template - and be sure to cache the result.
+      var fn = !(/\W/).test(str) ?
+        cache[str] = cache[str] ||
+          tmpl(document.getElementById(str).innerHTML) :
+      
+        // Generate a reusable function that will serve as a template
+        // generator (and which will be cached).
+        new Function("obj",
+          "var p=[],print=function(){p.push.apply(p,arguments);};" +
+        
+          // Introduce the data as local variables using with(){}
+          "with(obj){p.push('" +
+        
+          // Convert the template into pure JavaScript
+          str.replace(/[\r\t\n]/g, " ").split("<%").join("\t").replace(/((^|%>)[^\t]*)'/g, "$1\r").replace(/\t=(.*?)%>/g, "',$1,'").split("\t").join("');").split("%>").join("p.push('").split("\r").join("\\'")+ "');}return p.join('');");
+    
+      // Provide some basic currying to the user
+      return data ? fn( data ) : fn;
+    };
+  })();
+
+
   var panelName = "RailsBug";
 
   function debug(string, object) {
@@ -79,7 +108,7 @@ FBL.ns(function() { with (FBL) {
 
       if (infoBox.railsBugData) {
         for (var tab in infoBox.railsBugData) {
-          Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+tab, 'Rails '+tab);
+          Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+tab, infoBox.railsBugData[tab].title);
         }
       }
     },
@@ -98,12 +127,47 @@ FBL.ns(function() { with (FBL) {
 
           // Get body element associated with the tab.
           var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tab_title+'Text');
+          
+          if (this['_template_'+tab_title]) {
+            tabBody.innerHTML = tmpl(this['_template_'+tab_title],infoBox.railsBugData[tab_title]);
+          } else {
+            Firebug.JSONViewerModel.Preview.render(tabBody, {jsonObject: infoBox.railsBugData[tab_title]}, context);
+          }
 
-          tabBody.innerHTML = infoBox.railsBugData[tab_title];
           return;
         }
       }
     },
+
+    _template_log: ' \
+      <% for(var i in entries) { %> \
+        <div class="logRow <%={INFO: "logRow-info", DEBUG: "logRow-info", WARN: "logRow-warn", ERROR: "logRow-error", FATAL: "logRow-error"}[entries[i].level]%>"> \
+          <span class="objectBox objectBox-text"><span><%= entries[i].message %></span></span> \
+        </div> \
+      <% } %> \
+    ',
+
+    _template_sql: ' \
+      <table class="sql-queries"> \
+      <% for(var i in queries) { %> \
+        <tr> \
+          <td class="sql-time"> \
+            <%=queries[i].time%> \
+          </td> \
+          <td class="sql-text"> \
+            <%=queries[i].sql %> \
+          </td> \
+          <td class="sql-actions"> \
+            <a href="#copy">c</a> \
+            <a href="#backtrace">b</a> \
+            <a href="#examine">e</a> \
+            <a href="#run">r</a> \
+            <a href="#profile">p</a> \
+          </td> \
+        </tr> \
+      <% } %> \
+      </table> \
+    ',
 
     // Extract RailsBug data from headers, clearing them so they won't pollute the Headers tab
     _extractHeaders: function(subject) {
