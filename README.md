@@ -1,16 +1,13 @@
 # RailsBug - debug Rails apps from Firebug!
 
-**WARNING** this is prealpha stuff! I'm not going to walk you through it (yet).
-
-**TODO** screenshots
-
-**TODO** advantages
+**WARNING** this is alpha stuff! Bugs and feature requests are welcome.
 
 **TODO** extension
 
 ## Installation
 
-First, you'll need to set up `rack-bug` from https://github.com/leonid-shevtsov/rack-bug. My branch is patched to provide data for this extension.
+First, you'll need to set up `rack-bug` from [my branch](https://github.com/leonid-shevtsov/rack-bug). It is patched to provide data for this extension.
+Follow the README there, it's nothing special.
 
 Then, you install this extension into Firefox and off you go!
 
@@ -19,6 +16,13 @@ Then, you install this extension into Firefox and off you go!
 Two things that made this extension much simpler to code:
 
 * `rack-bug`, a Rails debugging toolbar - i used it for the backend as it has a great structure for such a tool.
-* eresig's Javascript microtemplating microframework - DOMplate is *such* a mess.
+* John Resig's Javascript microtemplating microframework - DOMplate is *such* a mess.
+
+## TODO
+
+* refactor code into multiple classes/files
+* make JS templates precompilable
+* employ Sass to make CSS easier
+* automate build process with Rake
 
 (c) 2011 Leonid Shevtsov.
