@@ -28,58 +28,36 @@ FBL.ns(function() { with (FBL) {
     };
   })();
 
+  function md5hash(str) {
+    var converter = Cc["@mozilla.org/intl/scriptableunicodeconverter"].createInstance(Ci.nsIScriptableUnicodeConverter);
+    converter.charset = "UTF-8";
+    var result = {};
+    var data = converter.convertToByteArray(str, result);
+    var ch = Cc["@mozilla.org/security/hash;1"].createInstance(Ci.nsICryptoHash);
+    ch.init(ch.MD5);
+    ch.update(data, data.length);
+    var hash = ch.finish(false);
+
+    // return the two-digit hexadecimal code for a byte
+    function toHexString(charCode)
+    {
+      return ("0" + charCode.toString(16)).slice(-2);
+    }
+
+    var s = '';
+
+    for (var i=0, l=hash.length; i<l; i++) {
+      s+= toHexString(hash.charCodeAt(i));
+    }
+
+    return s;
+  }
 
   var panelName = "RailsBug";
 
   function debug(string, object) {
     FBTrace.sysout(">>> RailsBug >> " + string, object);
   }
-
-
-  function HeaderInjectingObserver() {}
-
-  HeaderInjectingObserver.prototype = {
-    //// PUBLIC
-
-    // HTTP event handler method
-    observe: function(subject, topic, data) {
-      if (topic == 'http-on-modify-request') {
-        this._injectHeaders(subject);
-      }
-/*
-      } else if (topic == 'http-on-examine-response') {
-        debug('handling response');
-        this._handleResponse(subject);
-      }
-*/
-    },
-
-    // Set observer to process HTTP events
-    bind: function() {
-      if (!this._isBound) {
-        httpRequestObserver.addObserver(this, 'firebug-http-event', false);
-        this._isBound = true;
-      }
-    },
-
-    // Stop processing HTTP events
-    unbind: function() {
-      if (this._isBound) {
-        httpRequestObserver.removeObserver(this, 'firebug-http-event');
-        this._isBound = false;
-      }
-    },
-    
-    //// PRIVATE
-    
-    _isBound: false,
-    
-    // Add RailsBug headers to the request
-    _injectHeaders: function(subject) {
-      var httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
-      httpChannel.setRequestHeader('X-RailsBug-Enabled', 'true', false);
-    }
-  };
 
   Firebug.RailsNetTabs = extend(Firebug.Module, {
     // Add listeners
@@ -88,6 +66,8 @@ FBL.ns(function() { with (FBL) {
 
       Firebug.NetMonitor.NetInfoBody.addListener(this);
       Firebug.NetMonitor.addListener(this);
+
+      httpRequestObserver.addObserver(this, 'firebug-http-event', false);
     },
 
     // Remove listeners
@@ -96,11 +76,26 @@ FBL.ns(function() { with (FBL) {
 
       Firebug.NetMonitor.NetInfoBody.removeListener(this);
       Firebug.NetMonitor.removeListener(this);
+      httpRequestObserver.removeObserver(this, 'firebug-http-event');
+    },
+    
+    // observer to inject headers
+    observe: function(subject, topic, data) {
+      if (topic == 'http-on-modify-request') {
+        this._injectHeaders(subject);
+      }
     },
     
     // Get headers and extract RailsBug data from them
     onExamineResponse: function(context, request) {
-      this._setDataForRequest(context, request, this._parseData(this._extractHeaders(request)));
+      if (this._requestDataAlreadyStored(request)) {
+        return;
+      }
+
+      var data_string = this._extractHeaders(request);
+      var data_hash = md5hash(data_string);
+
+      this._setDataForRequest(context, request, data_hash, this._parseData(data_string));
     },
 
     // Create tabs according to what's been given in the RailsBug data
@@ -108,6 +103,8 @@ FBL.ns(function() { with (FBL) {
       infoBox.railsBugData = this._getDataForRequest(FirebugContext, file.request);
 
       if (infoBox.railsBugData) {
+        this._injectStylesheet(infoBox.ownerDocument);
+
         for (var i in infoBox.railsBugData) {
           Firebug.NetMonitor.NetInfoBody.appendTab(infoBox, 'Railsbug_'+infoBox.railsBugData[i][0], infoBox.railsBugData[i][1].title);
         }
@@ -149,7 +146,6 @@ FBL.ns(function() { with (FBL) {
       return ''+ms.toFixed(1)+'ms';
     },
 
-
     _template_log: ' \
       <% for(var i in entries) { %> \
         <div class="logRow <%={INFO: "logRow-info", DEBUG: "logRow-info", WARN: "logRow-warn", ERROR: "logRow-error", FATAL: "logRow-error"}[entries[i].level]%>"> \
@@ -160,7 +156,7 @@ FBL.ns(function() { with (FBL) {
 
     _template_sql: ' \
       <table class="sql-queries"> \
-      <% for(var i in queries) { %> \
+      <% for(var i=0, l=queries.length; i<l; i++) { %> \
         <tr> \
           <td class="sql-time"> \
             <%=queries[i].time%> \
@@ -169,7 +165,7 @@ FBL.ns(function() { with (FBL) {
             <%=queries[i].sql %> \
           </td> \
           <td class="sql-actions"> \
-            <a href="#copy" title="Copy"><img src="chrome://railsbug/skin/sql-copy.png"></a> \
+            <a id="railsBug-sql-copyLink-<%= i %>" href="#copy" title="Copy"><img src="chrome://railsbug/skin/sql-copy.png"></a> \
             <a href="#backtrace" title="Toggle backtrace"><img src="chrome://railsbug/skin/sql-backtrace.png"></a> \
             <a href="#run" title="Execute"><img src="chrome://railsbug/skin/sql-run.png"></a> \
             <a href="#explain" title="EXPLAIN"><img src="chrome://railsbug/skin/sql-explain.png"></a> \
@@ -179,6 +175,19 @@ FBL.ns(function() { with (FBL) {
       <% } %> \
       </table> \
     ',
+
+    _render_sql: function(tabBody, data, context) {
+      tabBody.innerHTML = tmpl(this._template_sql, data);
+
+      for (var i=0, l=data.queries.length; i<l; i++) {
+        var link = tabBody.ownerDocument.getElementById('railsBug-sql-copyLink-'+i);
+        link.onclick = (function(sql) {
+          return function() {
+            Firebug.RailsNetTabs._copyToClipboard(sql);
+          };
+        })(data.queries[i].sql);
+      }
+    },
 
     _template_request_variables: ' \
       <% for (var i in sections) { %> \
@@ -202,7 +211,7 @@ FBL.ns(function() { with (FBL) {
       <ul class="railsBug-templates"> \
         <% for (var i in templates) { %> \
           <li> \
-            <h3><%=Firebug.RailsNetTabs.formatMs(templates[i].time)%> / <%=Firebug.RailsNetTabs.formatMs(templates[i].exclusive_time)%> ex / <%=templates[i].totalShare%> t / <%=templates[i].parentShare%> p: <%=templates[i].name%></h3> \
+            <h3><%=Firebug.RailsNetTabs.formatMs(templates[i].time*1000)%> / <%=Firebug.RailsNetTabs.formatMs(templates[i].exclusive_time*1000)%> ex / <%=templates[i].totalShare%> t / <%=templates[i].parentShare%> p: <%=templates[i].name%></h3> \
             <%=templates[i].children ? tmpl(Firebug.RailsNetTabs._template_templates, {templates: templates[i].children}) : ""%> \
           </li> \
         <% } %> \
@@ -237,6 +246,12 @@ FBL.ns(function() { with (FBL) {
 //        Firebug.JSONViewerModel.Preview.render(tabBody.ownerDocument.getElementById("request_variables_"+i.replace(' ','')+"_container"), {jsonObject: data.sections[i]}, context);
 //      }
 //    },
+//
+    // Add RailsBug headers to the request
+    _injectHeaders: function(subject) {
+      var httpChannel = subject.QueryInterface(Ci.nsIHttpChannel);
+      httpChannel.setRequestHeader('X-RailsBug-Enabled', 'true', false);
+    },
 
     // Extract RailsBug data from headers, clearing them so they won't pollute the Headers tab
     _extractHeaders: function(subject) {
@@ -262,93 +277,62 @@ FBL.ns(function() { with (FBL) {
       return data==='' ? null : JSON.parse(data);
     },
 
-    // Find the request index in the given context's array of requests
-    _getRequestIndex: function(context, request) {
-      var i = -1;
-      for (i in context.netProgress.requests) {
-        if (request === context.netProgress.requests[i]) {
-          break;
-        }
-      }
-      return i;
-    },
-
     // Get RailsBug data for given request
     _getDataForRequest: function(context, request) {
-      return context.railsBugData ? context.railsBugData[this._getRequestIndex(context, request)] : null;
+      return context.railsBugData ? context.railsBugData[request.getResponseHeader('X-RailsBug-Key')] : null;
+    },
+      
+    _requestDataAlreadyStored: function(request) {
+      try {
+        request.getResponseHeader('X-RailsBug-Key');
+        return true;
+      } catch(NS_ERROR_NOT_AVAILABLE) {
+        // no header! so we need to set it
+        return false;
+      }
     },
     
     // Set RailsBug data for given request
-    _setDataForRequest: function(context, request, data) {
-      var index = this._getRequestIndex(context, request);
+    _setDataForRequest: function(context, request, data_hash, data) {
+      try {
+        request.setResponseHeader('X-RailsBug-Key', data_hash, false);
+      } catch(NS_ERROR_NOT_AVAILABLE) {
+        // seems like this is OK
+      }
+
       if (!context.railsBugData) {
         context.railsBugData = [];
       }
-      if (!context.railsBugData[index]) {
-        context.railsBugData[index] = data;
-      }
-    }
-  });
 
-  // Main module
-  Firebug.RailsBugModule = extend(Firebug.ActivableModule, {
-    requestObserver: null,
-
-    initialize: function() {
-      Firebug.ActivableModule.initialize.apply(this, arguments);
-
-      this.requestObserver = new HeaderInjectingObserver();
-    },
-
-    shutdown: function() {
-      Firebug.ActivableModule.initialize.apply(this, arguments);
-
-      this.requestObserver.unbind();
-      delete this.requestObserver;
-    },
-
-    onObserverChange: function(observer) {
-      if (this.hasObservers()) {
-        this.requestObserver.bind();
-      } else {
-        this.requestObserver.unbind();
+      if (!context.railsBugData[data_hash]) {
+        context.railsBugData[data_hash] = data;
       }
     },
 
-    onMyButton: function(context) {
-      alert('!');
-    }
-  });
-
-  function RailsBugPanel() {}
-
-  RailsBugPanel.prototype = extend(Firebug.ActivablePanel, {
-    name: panelName,
-    title: "Ruby on Rails",
-
-    initialize: function() {
-        Firebug.Panel.initialize.apply(this, arguments);
-    },
-
-    show: function() {
-      this.showToolbarButtons("fbRailsBugButtons", true);
-    },
-
-    hide: function() {
-      this.showToolbarButtons("fbRailsBugButtons", false);
-    },
-
-    onActivationChanged: function(enable)
+    _injectStylesheet: function(doc)
     {
-      if (enable) {
-        Firebug.RailsBugModule.addObserver(this);
-      } else {
-        Firebug.RailsBugModule.removeObserver(this);
-      }
+      if ($("railsBugStyles", doc))
+          return;
+
+      var stylesheet = createStyleSheet(doc, "chrome://railsbug/skin/railsbug.css");
+
+      stylesheet.setAttribute("id", "railsBugStyles");
+      addStyleSheet(doc, stylesheet);
+    },
+
+    _copyToClipboard: function(text)
+    {
+      var xfer = Cc["@mozilla.org/widget/transferable;1"].createInstance(Ci.nsITransferable);
+      xfer.addDataFlavor("text/unicode");
+
+      var xferString = Cc["@mozilla.org/supports-string;1"].createInstance(Ci.nsISupportsString);
+      xferString.data = text;
+      xfer.setTransferData("text/unicode", xferString, text.length * 2);
+
+      var clipboard = Cc["@mozilla.org/widget/clipboard;1"].getService(Ci.nsIClipboard);
+      clipboard.setData(xfer, null, Ci.nsIClipboard.kGlobalClipboard);
     }
   });
 
-  Firebug.registerActivableModule(Firebug.RailsBugModule);
-  Firebug.registerActivableModule(Firebug.RailsNetTabs);
-  Firebug.registerPanel(RailsBugPanel); 
+  Firebug.registerModule(Firebug.RailsNetTabs);
 }});
