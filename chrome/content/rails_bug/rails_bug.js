@@ -216,21 +216,25 @@ FBL.ns(function() { with (FBL) {
     },
 
     _template_request_variables: ' \
+      <div class="netInfoHeadersTable"> \
       <% for (var i in sections) { %> \
-        <h2><%= i %></h2> \
-        <table class="railsBug-requestVariables-table"> \
-          <% for (var j in sections[i]) { %> \
+        <div class="netInfoHeadersGroup"><span><%= i %></span></div> \
+        <table cellspacing="0" cellpadding="0"> \
+        <tbody class="netInfoRequestHeadersBody"> \
+          <% for (var j=0, l=sections[i].length; j<l; j++) { %> \
             <tr> \
-              <td class="railsBug-requestVariables-table-name"> \
-                <%= sections[i][j][0] %> \
+              <td class="netInfoParamName"> \
+                <span><%= sections[i][j][0] %></span> \
               </td> \
-              <td class="railsBug-requestVariables-table-value"> \
-                <%= JSON.stringify(sections[i][j][1]) %> \
+              <td class="netInfoParamValue"> \
+                <span><%= JSON.stringify(sections[i][j][1]) %></span> \
               </td> \
             </tr> \
           <% } %> \
+        </tbody> \
         </table> \
       <% } %> \
+      </div> \
     ',
 
     _template_templates: ' \
