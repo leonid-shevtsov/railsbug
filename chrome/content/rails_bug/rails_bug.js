@@ -93,7 +93,7 @@ FBL.ns(function() { with (FBL) {
       }
 
       var data_string = this._extractHeaders(request);
-      var data_hash = md5hash(data_string);
+      var data_hash = data_string==='' ? '(no railsbug data)' : md5hash(data_string);
 
       this._setDataForRequest(context, request, data_hash, this._parseData(data_string));
     },
@@ -123,22 +123,22 @@ FBL.ns(function() { with (FBL) {
         var tab_data = infoBox.railsBugData[i][1];
 
         if (hasClass(tab, 'netInfoRailsbug_'+tab_title+'Tab')) {
-          // Make sure the content is generated just once.
           tab.dataPresented = true;
-
-          // Get body element associated with the tab.
-          var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tab_title+'Text');
-          
-          if (this['_render_'+tab_title]) {
-            this['_render_'+tab_title](tabBody, tab_data, context);
-          } else if (this['_template_'+tab_title]) {
-            tabBody.innerHTML = tmpl(this['_template_'+tab_title], tab_data);
-          } else {
-            Firebug.JSONViewerModel.Preview.render(tabBody, {jsonObject: tab_data}, context);
-          }
-
+          this.renderTab(tab_title, tab_data, context);
           return;
         }
+      }
+    },
+
+    renderTab: function(tabTitle, tabData, context) {
+      var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tabTitle+'Text')
+
+      if (this['_render_'+tabTitle]) {
+        this['_render_'+tabTitle](tabBody, tabData, context);
+      } else if (this['_template_'+tabTitle]) {
+        tabBody.innerHTML = tmpl(this['_template_'+tabTitle], tabData);
+      } else {
+        Firebug.JSONViewerModel.Preview.render(tabBody, {jsonObject: tabData}, context);
       }
     },
   
