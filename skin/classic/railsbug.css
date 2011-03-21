@@ -1,0 +1,69 @@
+table.railsBug-sql-queries {
+  width: 100%
+}
+
+table.railsBug-sql-queries td {
+  padding: 0;
+  border-bottom: 1px solid #ddd;
+  line-height: 16px;
+}
+
+table.railsBug-sql-queries td {
+  vertical-align: top;
+  padding: 2px 0;
+}
+
+td.railsBug-sql-time {
+  text-align: right;
+  font-family: sans-serif;
+  font-weight: bold;
+  width: 80px;
+}
+
+td.railsBug-sql-time div.railsBug-sql-time-container {
+  position: relative;
+}
+
+table.railsBug-sql-queries td.railsBug-sql-text {
+  padding-left: 1em;
+  font-family: monospace;
+}
+
+div.railsBug-sql-actions {
+  background: white;
+  position: absolute;
+  display: none;
+  /*width: 80px;
+  left: 0px;*/
+  width: 32px;
+  left: 48px;
+  top: 0px;
+}
+
+tr.railsBug-sql-entry a {
+  float: left;
+  height: 16px;
+  width: 16px;
+  font-size: 0.0001em;
+}
+
+tr.railsBug-sql-entry:hover div.railsBug-sql-actions {
+  display: block;
+}
+
+div.railsBug-sql-backtrace {
+  margin-top: 2px;
+  margin-bottom: 2px;
+  padding-left: 8px;
+  margin-left: 8px;
+  border-left: solid 1px #ddd;
+  display: none;
+}
+
+div.railsBug-sql-backtrace div {
+  padding-bottom: 1px;
+}
+
+div.railsBug-sql-backtrace.visible {
+  display: block;
+}

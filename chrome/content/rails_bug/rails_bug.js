@@ -124,14 +124,14 @@ FBL.ns(function() { with (FBL) {
 
         if (hasClass(tab, 'netInfoRailsbug_'+tab_title+'Tab')) {
           tab.dataPresented = true;
-          this.renderTab(tab_title, tab_data, context);
+          this.renderTab(infoBox, tab_title, tab_data, context);
           return;
         }
       }
     },
 
-    renderTab: function(tabTitle, tabData, context) {
-      var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tabTitle+'Text')
+    renderTab: function(infoBox, tabTitle, tabData, context) {
+      var tabBody = getElementByClass(infoBox, 'netInfoRailsbug_'+tabTitle+'Text');
 
       if (this['_render_'+tabTitle]) {
         this['_render_'+tabTitle](tabBody, tabData, context);
@@ -146,6 +146,12 @@ FBL.ns(function() { with (FBL) {
       return ''+ms.toFixed(1)+'ms';
     },
 
+    _nextUniqId: 1,
+
+    uniqId: function() {
+      return this._nextUniqId++;
+    },
+
     _template_log: ' \
       <% for(var i in entries) { %> \
         <div class="logRow <%={INFO: "logRow-info", DEBUG: "logRow-info", WARN: "logRow-warn", ERROR: "logRow-error", FATAL: "logRow-error"}[entries[i].level]%>"> \
@@ -155,21 +161,30 @@ FBL.ns(function() { with (FBL) {
     ',
 
     _template_sql: ' \
-      <table class="sql-queries"> \
-      <% for(var i=0, l=queries.length; i<l; i++) { %> \
-        <tr> \
-          <td class="sql-time"> \
-            <%=queries[i].time%> \
+      <table class="railsBug-sql-queries" cellspacing="0" cellpadding="0"> \
+      <% for(var i=0, l=queries.length; i<l; i++) { if(!queries[i].uniqid) {queries[i].uniqid = Firebug.RailsNetTabs.uniqId();}  %> \
+        <tr class="railsBug-sql-entry"> \
+          <td class="railsBug-sql-time"> \
+            <div class="railsBug-sql-time-container"> \
+              <%=queries[i].time%> \
+              <div class="railsBug-sql-actions"> \
+                <a id="railsBug-sql-copyLink-<%= queries[i].uniqid %>" href="#copy" title="Copy"><img src="chrome://railsbug/skin/sql-copy.png"></a> \
+                <a id="railsBug-sql-backtraceLink-<%= queries[i].uniqid %>" href="#backtrace" title="Toggle backtrace"><img src="chrome://railsbug/skin/sql-backtrace.png"></a> \
+                <!-- \
+                <a href="#run" title="Execute"><img src="chrome://railsbug/skin/sql-run.png"></a> \
+                <a href="#explain" title="EXPLAIN"><img src="chrome://railsbug/skin/sql-explain.png"></a> \
+                <a href="#profile" title="Profile"><img src="chrome://railsbug/skin/sql-profile.png"></a> \
+                --> \
+              </div> \
+            </div> \
           </td> \
-          <td class="sql-text"> \
+          <td class="railsBug-sql-text"> \
             <%=queries[i].sql %> \
-          </td> \
-          <td class="sql-actions"> \
-            <a id="railsBug-sql-copyLink-<%= i %>" href="#copy" title="Copy"><img src="chrome://railsbug/skin/sql-copy.png"></a> \
-            <a href="#backtrace" title="Toggle backtrace"><img src="chrome://railsbug/skin/sql-backtrace.png"></a> \
-            <a href="#run" title="Execute"><img src="chrome://railsbug/skin/sql-run.png"></a> \
-            <a href="#explain" title="EXPLAIN"><img src="chrome://railsbug/skin/sql-explain.png"></a> \
-            <a href="#profile" title="Profile"><img src="chrome://railsbug/skin/sql-profile.png"></a> \
+            <div class="railsBug-sql-backtrace" id="railsBug-sql-backtrace-<%=queries[i].uniqid%>"> \
+              <% for (var j=0, k=queries[i].backtrace.length; j<k; j++) { %> \
+                <div><%= queries[i].backtrace[j] %></div> \
+              <% } %> \
+            </div> \
           </td> \
         </tr> \
       <% } %> \
@@ -180,12 +195,22 @@ FBL.ns(function() { with (FBL) {
       tabBody.innerHTML = tmpl(this._template_sql, data);
 
       for (var i=0, l=data.queries.length; i<l; i++) {
-        var link = tabBody.ownerDocument.getElementById('railsBug-sql-copyLink-'+i);
-        link.onclick = (function(sql) {
+        tabBody.ownerDocument.getElementById('railsBug-sql-copyLink-'+data.queries[i].uniqid).onclick = (function(sql) {
           return function() {
             Firebug.RailsNetTabs._copyToClipboard(sql);
           };
         })(data.queries[i].sql);
+        
+        tabBody.ownerDocument.getElementById('railsBug-sql-backtraceLink-'+data.queries[i].uniqid).onclick = (function(uniqid) {
+          return function() {
+            var backtrace = tabBody.ownerDocument.getElementById('railsBug-sql-backtrace-'+uniqid);
+            if (hasClass(backtrace, 'visible')) {
+              removeClass(backtrace, 'visible');
+            } else {
+              setClass(backtrace, 'visible');
+            }
+          };
+        })(data.queries[i].uniqid);
       }
     },
 
