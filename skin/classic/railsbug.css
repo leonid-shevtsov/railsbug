@@ -80,3 +80,7 @@ ul.railsBug-templates {
   font-family: sans-serif;
   list-style-type: none;
 }
+
+table.railsBug-requestVariables {
+  width: 100%
+}

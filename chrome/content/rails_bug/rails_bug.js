@@ -219,7 +219,7 @@ FBL.ns(function() { with (FBL) {
       <div class="netInfoHeadersTable"> \
       <% for (var i in sections) { %> \
         <div class="netInfoHeadersGroup"><span><%= i %></span></div> \
-        <table cellspacing="0" cellpadding="0"> \
+        <table cellspacing="0" cellpadding="0" class="railsBug-requestVariables"> \
         <tbody class="netInfoRequestHeadersBody"> \
           <% for (var j=0, l=sections[i].length; j<l; j++) { %> \
             <tr> \
@@ -227,7 +227,7 @@ FBL.ns(function() { with (FBL) {
                 <span><%= sections[i][j][0] %></span> \
               </td> \
               <td class="netInfoParamValue"> \
-                <span><%= JSON.stringify(sections[i][j][1]) %></span> \
+                <code class="focusRow subFocusRow"><%= JSON.stringify(sections[i][j][1]) %></code> \
               </td> \
             </tr> \
           <% } %> \
