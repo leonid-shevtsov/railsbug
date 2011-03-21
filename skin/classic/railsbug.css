@@ -67,3 +67,16 @@ div.railsBug-sql-backtrace div {
 div.railsBug-sql-backtrace.visible {
   display: block;
 }
+
+ul.railsBug-templates li {
+  margin: 0;
+  padding: 2px 0;
+  border-top: solid 1px #ddd;
+}
+
+ul.railsBug-templates {
+  margin: 0 0 0 16px;
+  padding: 2px 0 0 0;
+  font-family: sans-serif;
+  list-style-type: none;
+}

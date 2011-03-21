@@ -146,10 +146,11 @@ FBL.ns(function() { with (FBL) {
       return ''+ms.toFixed(1)+'ms';
     },
 
-    _nextUniqId: 1,
+    _nextUniqId: 0,
 
     uniqId: function() {
-      return this._nextUniqId++;
+      this._nextUniqId++;
+      return this._nextUniqId;
     },
 
     _template_log: ' \
@@ -236,7 +237,11 @@ FBL.ns(function() { with (FBL) {
       <ul class="railsBug-templates"> \
         <% for (var i in templates) { %> \
           <li> \
-            <h3><%=Firebug.RailsNetTabs.formatMs(templates[i].time*1000)%> / <%=Firebug.RailsNetTabs.formatMs(templates[i].exclusive_time*1000)%> ex / <%=templates[i].totalShare%> t / <%=templates[i].parentShare%> p: <%=templates[i].name%></h3> \
+            <%=Firebug.RailsNetTabs.formatMs(templates[i].time*1000)%> / \
+            <%=Firebug.RailsNetTabs.formatMs(templates[i].exclusive_time*1000)%> ex / \
+            <%=templates[i].totalShare%> t / \
+            <%=templates[i].parentShare%> p: \
+            <strong><%=templates[i].name%></strong> \
             <%=templates[i].children ? tmpl(Firebug.RailsNetTabs._template_templates, {templates: templates[i].children}) : ""%> \
           </li> \
         <% } %> \
