@@ -2,7 +2,7 @@
 
 **WARNING** this is alpha stuff! Bugs and feature requests are welcome.
 
-**TODO** extension
+Installable via [RailsBug @ Firefox Addons](https://addons.mozilla.org/en-US/firefox/addon/railsbug/).
 
 ## Installation
 
