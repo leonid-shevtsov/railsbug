@@ -1,6 +1,10 @@
-# RailsBug - debug Rails apps from Firebug!
+**This project is discontinued.** I'm just not using Firefox, so I have no interest in working on it.
 
-**WARNING** this is alpha stuff! Bugs and feature requests are welcome.
+You may fork the code and fix it. Or, [rails_panel](https://github.com/dejan/rails_panel) is a good alternative for Google Chrome.
+
+This codebase is useful as an illustration that Firebug addon development is not much fun. :)
+
+# RailsBug - debug Rails apps from Firebug!
 
 Installable via [RailsBug @ Firefox Addons](https://addons.mozilla.org/en-US/firefox/addon/railsbug/).
 
